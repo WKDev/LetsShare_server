@@ -2,10 +2,8 @@ var mysql = require('mysql');
 var express = require('express');
 var bodyParser = require('body-parser');
 var fs = require('fs');
-multer = require('multer')
-path = require('path');
-crypto = require('crypto');
 var app = express();
+var itemidentifier;
 
 
 app.use(bodyParser.json());
@@ -14,10 +12,6 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.listen(3000,function () {
     console.log('서버 실행 중...');
 });
-
-
-
-
 
 var connection = mysql.createConnection({
     host: 'tbkdatabase3.c0eh6nyw1fpk.ap-northeast-2.rds.amazonaws.com',
@@ -56,7 +50,8 @@ app.post('/user/join', function (req, res) {
         });
     });
 });
-// 로그인
+
+////////////////////////////////////////////////////// 로그인 //////////////////////////////////////////////////////
 app.post('/user/login', function (req, res) {
     var autoLogin = req.body.is_autologin;
     var userEmail = req.body.userEmail;
@@ -108,7 +103,7 @@ app.post('/user/login', function (req, res) {
         });
     })
 });
-// DB에 아이템 추가
+//////////////////////////////////////////////////////////// DB에 아이템 추가/////////////////////////////////////////
 app.post('/user/board', function (req, res) {
 
   console.log("Item Add Requested:",req.body);
@@ -136,12 +131,45 @@ app.post('/user/board', function (req, res) {
             message = '아이템 등록이 완료되었습니다.';
         }
 
+        itemidentifier = id;
+
         res.json({
             'code': resultCode,
             'message': message
         });
     });
 });
+
+//UPDATE `example`.`Item` SET `itemimg` = 'ss' WHERE (`_id` = 'Ol8RGdxV');
+
+///////////////////////////////////////////////클라이언트로부터 파일 수신/////////////////////////////////////////////////////////////
+//https://www.zerocho.com/category/NodeJS/post/5950a6c4f7934c001894ea83
+//https://m.blog.naver.com/PostView.nhn?blogId=pjt3591oo&logNo=220517017431&proxyReferer=https%3A%2F%2Fwww.google.com%2F
+//http://jeonghwan-kim.github.io/%EC%9D%B4%EB%AF%B8%EC%A7%80-%EC%97%85%EB%A1%9C%EB%93%9C-1-multer-%EB%AA%A8%EB%93%88%EB%A1%9C-%ED%8C%8C%EC%9D%BC-%EC%97%85%EB%A1%9C%EB%93%9C/
+//https://github.com/expressjs/multer/blob/master/doc/README-ko.md 멀터 설명
+const multer = require('multer');
+const upload = multer({dest:'images/', limits : {filesize: 20*10000*10000}});
+app.post('/upload', upload.single('upload_file'), (req, res) => {
+  var sql = 'update Item set itemimg = ? where (_id = \''+ itemidentifier+'\')';
+  connection.query(sql, req.file.filename, function (err, result) {
+    if(err){
+      console.log(err);
+    }
+    else{
+      console.log("\ncomplete adding img_name to DB");
+    }
+
+  });
+
+  // console.log(req.body);
+  console.log(itemidentifier+ " " + req.file.filename);
+  console.log("\n");
+  console.log(req.file);
+  res.json({})
+});
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 //DB에서 아이템 조회
 app.get('/user/inquiredata', function (req, res) {
   console.log("Item List Requested");
