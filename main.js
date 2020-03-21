@@ -3,7 +3,12 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var fs = require('fs');
 var app = express();
+var http = require('http');
+var path = require('path');
+var mime = require('mime');
 var itemidentifier;
+var url = require("url");
+const BASE_URL = 'http://ec2-13-209-22-0.ap-northeast-2.compute.amazonaws.com:3000/';
 
 
 app.use(bodyParser.json());
@@ -23,7 +28,7 @@ var connection = mysql.createConnection({
 // 회원가입
 app.post('/user/join', function (req, res) {
     console.log(req.body);
-    var id = randomString();
+    var id = randomString(8);
     var userEmail = req.body.userEmail;
     var userPwd = req.body.userPwd;
     var userName = req.body.userName;
@@ -108,7 +113,7 @@ app.post('/user/board', function (req, res) {
 
   console.log("Item Add Requested:",req.body);
 
-  var id = randomString();
+  var id = randomString(8);
   var itemTitle = req.body.itemTitle;
   var itemPrice = req.body.itemPrice;
   var itemDescription = req.body.itemDescription;
@@ -147,8 +152,22 @@ app.post('/user/board', function (req, res) {
 //https://m.blog.naver.com/PostView.nhn?blogId=pjt3591oo&logNo=220517017431&proxyReferer=https%3A%2F%2Fwww.google.com%2F
 //http://jeonghwan-kim.github.io/%EC%9D%B4%EB%AF%B8%EC%A7%80-%EC%97%85%EB%A1%9C%EB%93%9C-1-multer-%EB%AA%A8%EB%93%88%EB%A1%9C-%ED%8C%8C%EC%9D%BC-%EC%97%85%EB%A1%9C%EB%93%9C/
 //https://github.com/expressjs/multer/blob/master/doc/README-ko.md 멀터 설명
+//https://github.com/WKDev/Retrofit-Sample#retrofit%EC%97%90%EC%84%9C-%EB%A9%80%ED%8B%B0%ED%8C%8C%ED%8A%B8-%ED%86%B5%EC%8B%A0%ED%95%98%EA%B8%B0
+
 const multer = require('multer');
-const upload = multer({dest:'images/', limits : {filesize: 20*10000*10000}});
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, 'images');
+    },
+    filename: function (req, file, cb) {
+      cb(null, randomString(12) + ".jpg");
+    }
+  }),
+});
+
+
 app.post('/upload', upload.single('upload_file'), (req, res) => {
   var sql = 'update Item set itemimg = ? where (_id = \''+ itemidentifier+'\')';
   connection.query(sql, req.file.filename, function (err, result) {
@@ -162,18 +181,22 @@ app.post('/upload', upload.single('upload_file'), (req, res) => {
   });
 
   // console.log(req.body);
-  console.log(itemidentifier+ " " + req.file.filename);
-  console.log("\n");
+  console.log(" _id : " + itemidentifier+ "/ img_id : " + req.file.filename);
   console.log(req.file);
   res.json({})
 });
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////클라이언트로 파일 송신////////////////////////////////////////////////////////////////
 
+app.use(express.static('images'));
 
-//DB에서 아이템 조회
+// app.get('/download_img', (req,res)=>{
+//   const file = '/home/ubuntu/images' + test.jpg
+//   res.download(file);
+// });
+///////////////////////////////////////////DB에서 아이템 조회/////////////////////////////////////////
 app.get('/user/inquiredata', function (req, res) {
-  console.log("Item List Requested");
-  var sql = 'select * from Item';
+  console.log("Client Accessed to server.");
+  var sql = 'select * from Item order by date desc';
   var main = [];
     connection.query(sql, function (err, rows, result) {
         if (err) {
@@ -182,15 +205,15 @@ app.get('/user/inquiredata', function (req, res) {
             for(var i = 0; i < rows.length; i++){
                 var sub = {
                     'parsed_id' : rows[i]._id,
+                    'parsed_img': rows[i].itemimg,
                     'parsed_title': rows[i].itemtitle,
                     'parsed_price': rows[i].itemprice,
                     'parsed_description' : rows[i].itemdescription,
                     'parsed_writer' : rows[i].writer,
-                    'parsed_date' : rows[i].date,
+                    'parsed_date' : rows[i].date
                 }
                 main[i] = sub;
             }
-        var jsonObject = {main};
         res.json(main);
                 }
           });
@@ -295,10 +318,9 @@ app.post('/user/logout', function (req, res) {
   });
 });
 
-function randomString() {
+function randomString(randomstring) {
 var chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
 var string_length = 8;
-var randomstring = '';
 for (var i=0; i<string_length; i++) {
 var rnum = Math.floor(Math.random() * chars.length);
 randomstring += chars.substring(rnum,rnum+1);
