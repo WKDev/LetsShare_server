@@ -25,7 +25,7 @@ var connection = mysql.createConnection({
     password: '12345678',
     port: 8080
 });
-// 회원가입
+//////////////////////////////////////////////// 회원가입 ////////////////////////////////////////////////////////////////////
 app.post('/user/join', function (req, res) {
     console.log(req.body);
     var id = randomString(8);
@@ -166,7 +166,6 @@ const upload = multer({
     }
   }),
 });
-
 
 app.post('/upload', upload.single('upload_file'), (req, res) => {
   var sql = 'update Item set itemimg = ? where (_id = \''+ itemidentifier+'\')';
